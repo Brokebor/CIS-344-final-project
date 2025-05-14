@@ -1,5 +1,10 @@
 <?php
 require_once 'PharmacyDatabase.php';
+session_start();
+if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'pharmacist') {
+    header("Location: login.php");
+    exit;
+}
 
 class PharmacyPortal {
     private $db;
@@ -15,19 +20,33 @@ class PharmacyPortal {
         switch ($action) {
            
             case 'addPrescription':
+
                 $this->addPrescription();
+
                 break;
+
             case 'viewPrescriptions':
+
                 $this->viewPrescriptions();
+
                 break;
+
             case 'viewInventory':
+
                 $this->viewInventory();
+
                 break;
+
             case 'addUser':
+
                 $this->addUser();
+
                 break;
+
             case 'addMedications':
+
                 $this->addMedication();
+
                 break;
            
             default:
@@ -38,10 +57,12 @@ class PharmacyPortal {
 
  
     private function home() {
+
         include 'templates/home.php';
     }
 
     private function addPrescription() {
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // process form submission
             $patientUsername = trim($_POST['patient_username'] ?? '');
@@ -125,6 +146,7 @@ class PharmacyPortal {
             include 'templates/addUser.php';
         }
     }
+    
     private function addMedication() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -172,4 +194,5 @@ class PharmacyPortal {
 
 }
 $portal = new PharmacyPortal();
+
 $portal->handleRequest();

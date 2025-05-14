@@ -26,9 +26,11 @@ class PharmacyDatabase {
         }
         echo "Successfully connected to the database";
     }
-
+    //prescription creator
     public function addPrescription($patientUserName, $medicationId, $dosageInstructions, $quantity) {
+
         $stmt = $this->connection->prepare(
+            
             "SELECT userId FROM Users WHERE userName = ? AND userType = 'patient'"
         );
 
@@ -45,8 +47,9 @@ class PharmacyDatabase {
         if (!$patientId) {
             return false;
         }
-        
+        //insertion of the prescription
         $stmt = $this->connection->prepare(
+
             "INSERT INTO prescriptions (userId, medicationId, dosageInstructions, quantity, prescribedDate) 
 
              VALUES (?, ?, ?, ?, NOW())"
@@ -59,21 +62,26 @@ class PharmacyDatabase {
         
         return $result;
     }
-
+    //view grabber for pharmcist user
     public function getAllPrescriptions() {
+
         $result = $this->connection->query("SELECT * FROM  prescriptions join medications on prescriptions.medicationId= medications.medicationId");
 
         return $result->fetch_all(MYSQLI_ASSOC);
     }
     
     public function viewInventory() {
+
         //view grabber that was made in sql for this purpose
+
         $result = $this->connection->query("SELECT * FROM MedicationInventoryView");
 
         if ($result) {
+
             return $result->fetch_all(MYSQLI_ASSOC);
 
         } else {
+
             echo "Error retrieving medication inventory.";
 
             return [];
@@ -87,6 +95,8 @@ class PharmacyDatabase {
 
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
         
+        //mysql insertion into user table
+
         $stmt = $this->connection->prepare(
 
             "INSERT INTO users (userName, contactInfo, userType, password) VALUES (?, ?, ?, ?)"
@@ -100,14 +110,15 @@ class PharmacyDatabase {
 
         return $result;
     }
-    
+    //makes a query to insert phar
     public function addMedication($name, $dosage, $maker = null) {
         try {
+
             $stmt = $this->connection->prepare(
 
                 "INSERT INTO Medications (medicationName, dosage, manufacturer) VALUES (?, ?, ?)"
             );
-            
+            //failstate
             if (!$stmt) {
 
                 error_log("Prepare failed: " . $this->connection->error);
@@ -146,6 +157,90 @@ class PharmacyDatabase {
 
             return false;
         }
+    }
+    //for login 
+    public function verifyUser($username, $password) {
+
+        $stmt = $this->connection->prepare(
+            // pulls data from the database
+            "SELECT userId, userName, userType, password FROM Users WHERE userName = ?"
+        );
+
+        $stmt->bind_param("s", $username);
+
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows === 1) {
+
+            $user = $result->fetch_assoc();
+
+            if (password_verify($password, $user['password'])) {
+
+                return $user;
+                
+            }
+        }
+        return false;
+    }
+    public function getUserDetails($userId) {
+        // initialize return array
+        $userDetails = [];
+        
+        // 1. get basic user info
+
+        $stmt = $this->connection->prepare(
+
+            "SELECT userId, userName, contactInfo, userType 
+
+             FROM Users 
+
+             WHERE userId = ?"
+        );
+        $stmt->bind_param("i", $userId);
+
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+
+        $userDetails = $result->fetch_assoc();
+
+        $stmt->close();
+    
+        if (!$userDetails) {
+
+            return false; // usser not found
+        }
+    
+        // 2. get user's prescriptions
+
+        $stmt = $this->connection->prepare(
+
+            "SELECT p.prescriptionId, p.prescribedDate, p.dosageInstructions, p.quantity, p.refillCount,
+
+                    m.medicationId, m.medicationName, m.dosage, m.manufacturer
+
+             FROM prescriptions p
+
+             JOIN medications m ON p.medicationId = m.medicationId
+
+             WHERE p.userId = ?"
+        );
+
+        //
+
+        $stmt->bind_param("i", $userId);
+
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+
+        $userDetails['prescriptions'] = $result->fetch_all(MYSQLI_ASSOC);
+        
+        $stmt->close();
+    
+        return $userDetails;
     }
     
     //Add Other needed functions here
